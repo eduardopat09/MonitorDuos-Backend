@@ -1,2 +1,2 @@
 # Frontend
-Repositorio dedicado al frontend del proyecto monitor en equipo
+Repositorio dedicado al backend del proyecto monitor en equipo
