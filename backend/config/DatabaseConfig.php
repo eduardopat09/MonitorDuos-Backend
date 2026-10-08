@@ -8,7 +8,7 @@ class DatabaseConfig
 {
     public static function getHost(): string
     {
-        return getenv('DB_HOST') ?: 'IP_REMOTA';
+        return getenv('DB_HOST') ?: 'localhost';
     }
 
     public static function getDbName(): string
@@ -18,11 +18,11 @@ class DatabaseConfig
 
     public static function getUser(): string
     {
-        return getenv('DB_USER') ?: 'usuario';
+        return getenv('DB_USER') ?: 'root';
     }
 
     public static function getPassword(): string
     {
-        return getenv('DB_PASS') ?: 'password';
+        return getenv('DB_PASS') ?: 'rootpassword';
     }
 }

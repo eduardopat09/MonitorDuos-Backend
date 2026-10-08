@@ -33,10 +33,13 @@ class Connection
                     ]
                 );
             } catch (PDOException $e) {
-                // enumerrors de errores.php
-                http_response_code(500);
-                echo Errors::DATABASE_ERROR->value;
-                exit;
+    http_response_code(500);
+    // Imprime el motivo exacto que reporta MySQL
+    echo json_encode([
+        "error" => "Error de conexion a la base de datos",
+        "detalle" => $e->getMessage()
+    ]);
+    exit;
             }
         }
 

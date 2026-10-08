@@ -4,59 +4,50 @@ declare(strict_types=1);
 
 namespace App;
 
+use InvalidArgumentException;
+
 class ValueValidation
 {
-    // validacion de enteros
     public static function validateId(mixed $val, bool $allowMinusOne = false): int
     {
         if (!is_numeric($val)) {
-            throw new \InvalidArgumentException("El valor debe ser numérico.");
+            throw new InvalidArgumentException("El valor debe ser numérico.");
         }
 
         $valInt = (int) $val;
 
         if ($valInt <= 0 && (!$allowMinusOne || $valInt !== -1)) {
-            throw new \InvalidArgumentException("El valor debe ser mayor a 0.");
+            throw new InvalidArgumentException("El valor debe ser mayor a 0.");
         }
 
         return $valInt;
     }
 
-    //longitud maxima y minima de las cadenas de texto
-    public static function validateString(mixed $val, int $min = 1, int $max = 255): string
+    public static function validateRequired(mixed $val, string $paramName): string
     {
-        if (!is_string($val)) {
-            throw new \InvalidArgumentException("El valor debe ser una cadena de texto.");
+        if ($val === null || trim((string)$val) === '') {
+            throw new InvalidArgumentException("El parámetro '$paramName' es obligatorio y no puede estar vacío.");
         }
 
-        $length = strlen(trim($val));
-        if ($length < $min || $length > $max) {
-            throw new \InvalidArgumentException("La longitud debe estar entre $min y $max caracteres.");
-        }
-
-        return trim($val);
+        return trim((string)$val);
     }
 
-    // validacion de correos electronicos
-    public static function validateEmail(mixed $val): string
+    public static function validateDate(mixed $val): string
     {
-        if (!is_string($val) || !filter_var($val, FILTER_VALIDATE_EMAIL)) {
-            throw new \InvalidArgumentException("El formato del correo es inválido.");
+        if (!is_string($val) || trim($val) === '') {
+            throw new InvalidArgumentException("La fecha no puede estar vacía.");
         }
 
-        return $val;
-    }
-
-    //formatos de fechas correctos
-    public static function validateDate(mixed $val, string $format = 'Y-m-d'): string
-    {
-        if (!is_string($val)) {
-            throw new \InvalidArgumentException("La fecha debe ser una cadena de texto.");
+        $val = trim($val);
+        // Normalizar si solo envían la fecha (YYYY-MM-DD)
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+            $val .= ' 00:00:00';
         }
 
-        $date = \DateTime::createFromFormat($format, $val);
-        if (!$date || $date->format($format) !== $val) {
-            throw new \InvalidArgumentException("El formato de fecha es inválido. Se espera: $format.");
+        $format = 'Y-m-d H:i:s';
+        $d = \DateTime::createFromFormat($format, $val);
+        if (!$d || $d->format($format) !== $val) {
+            throw new InvalidArgumentException("Formato de fecha inválido. Se espera YYYY-MM-DD o YYYY-MM-DD HH:MM:SS.");
         }
 
         return $val;

@@ -7,16 +7,55 @@ namespace App;
 use App\Connection;
 use App\Tools;
 use App\ValueValidation;
+use App\Sessions\Session;
+use InvalidArgumentException;
 use PDO;
 
 class Services
 {
-    /**
-     * se obtienen métricas de obtencion_datos.py y las guarda en la base de datos remota.
-     */
+    public static function login(string $usuario): void
+    {
+        try {
+            $userClean = ValueValidation::validateRequired($usuario, 'usuario');
+            Session::start();
+            Session::set('user_id', 1);
+            Session::set('usuario', $userClean);
+
+            Tools::jsonResponse([
+                'status' => 'success',
+                'mensaje' => "Sesion iniciada para $userClean"
+            ], 200);
+        } catch (InvalidArgumentException $e) {
+            Tools::jsonResponse(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    public static function checkSession(): void
+    {
+        if (!Session::isValid()) {
+            http_response_code(401);
+            echo Errors::UNAUTHORIZED->value;
+            exit;
+        }
+
+        Tools::jsonResponse([
+            'status' => 'success',
+            'usuario' => Session::get('usuario')
+        ], 200);
+    }
+
+    public static function logout(): void
+    {
+        Session::destroy();
+        Tools::jsonResponse([
+            'status' => 'success',
+            'mensaje' => 'Sesion cerrada exitosamente'
+        ], 200);
+    }
+
     public static function obtenerYGuardarDatos(): void
     {
-        $command = escapeshellcmd('/usr/bin/python3 ' . __DIR__ . '/python/obtencion_datos_rendimiento.py');
+        $command = escapeshellcmd('python3 ' . __DIR__ . '/python/obtencion_datos_rendimiento.py') . ' 2>&1';
         $output = shell_exec($command);
         $metrics = json_decode($output ?: '{}', true);
 
@@ -28,12 +67,10 @@ class Services
         $pdo->beginTransaction();
 
         try {
-            // Inserción en tabla padre 'monitoreo'
             $stmt = $pdo->prepare("INSERT INTO monitoreo () VALUES ()");
             $stmt->execute();
             $sesionId = (int) $pdo->lastInsertId();
 
-            // insercion en tablas hijas (cpu, ram, disco) sesion_id
             $stmtCpu = $pdo->prepare("INSERT INTO cpu (sesion_id, porcentaje_de_uso) VALUES (:id, :uso)");
             $stmtCpu->execute(['id' => $sesionId, 'uso' => $metrics['cpu_uso']]);
 
@@ -53,30 +90,27 @@ class Services
                     'ram_uso' => $metrics['ram_uso'],
                     'disco_uso' => $metrics['disco_uso']
                 ]
-            ]);
+            ], 200);
         } catch (\Exception $e) {
             $pdo->rollBack();
             Tools::jsonResponse(['error' => 'Error al guardar en BD: ' . $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Consulta del historial de rendimiento filtrando por fechas válidas.
-     */
-    public static function historialFechas(string $fechaInicio, string $fechaFin): void
+    public static function historialFechas(?string $fechaInicio, ?string $fechaFin): void
     {
         try {
-            // Se utiliza ValueValidation,php para evitar fechas maliciosas o erróneas
-            $inicioValido = ValueValidation::validateDate($fechaInicio, 'Y-m-d H:i:s');
-            $finValido = ValueValidation::validateDate($fechaFin, 'Y-m-d H:i:s');
+            ValueValidation::validateRequired($fechaInicio, 'inicio');
+            ValueValidation::validateRequired($fechaFin, 'fin');
+
+            $inicioValido = ValueValidation::validateDate($fechaInicio);
+            $finValido = ValueValidation::validateDate($fechaFin);
 
             if (strtotime($inicioValido) > strtotime($finValido)) {
-                Tools::jsonResponse(['error' => 'La fecha inicio no puede ser posterior a la fecha fin'], 400);
+                Tools::jsonResponse(['error' => 'La fecha de inicio no puede ser mayor que la fecha final.'], 400);
             }
 
             $pdo = Connection::getInstance();
-            
-            // JOIN adaptado a tu dump exacto de la base de datos[cite: 9]
             $query = "
                 SELECT 
                     m.id AS sesion_id,
@@ -94,14 +128,14 @@ class Services
 
             $stmt = $pdo->prepare($query);
             $stmt->execute(['inicio' => $inicioValido, 'fin' => $finValido]);
-            $datos = $stmt->fetchAll();
+            $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             Tools::jsonResponse([
                 'status' => 'success',
                 'total_registros' => count($datos),
                 'datos' => $datos
-            ]);
-        } catch (\Exception $e) {
+            ], 200);
+        } catch (InvalidArgumentException $e) {
             Tools::jsonResponse(['error' => $e->getMessage()], 400);
         }
     }
