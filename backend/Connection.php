@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App;
 
 use App\Config\DatabaseConfig;
+use App\Tools;
 use PDO;
 use PDOException;
 
@@ -33,13 +34,10 @@ class Connection
                     ]
                 );
             } catch (PDOException $e) {
-    http_response_code(500);
-    // Imprime el motivo exacto que reporta MySQL
-    echo json_encode([
-        "error" => "Error de conexion a la base de datos",
-        "detalle" => $e->getMessage()
-    ]);
-    exit;
+                Tools::jsonResponse([
+                    "error" => "Error de conexion a la base de datos",
+                    "detalle" => $e->getMessage()
+                ], 500);
             }
         }
 

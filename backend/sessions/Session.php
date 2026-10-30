@@ -6,45 +6,49 @@ namespace App\Sessions;
 
 class Session
 {
-    // sesion y la cookie
+    // Sesion y la cookie
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            
+            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+                || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
             session_set_cookie_params([
                 'lifetime' => 3600,
                 'path' => '/',
                 'domain' => '',
-                'secure' => true,     
-                'httponly' => true,   
-                'samesite' => 'Strict'
+                'secure' => $isHttps,
+                'httponly' => true,
+                'samesite' => $isHttps ? 'None' : 'Lax'
             ]);
-            
+
             session_start();
         }
     }
 
-   // validacion de una sesion existente
+    // Validacion de una sesion existente
     public static function isValid(): bool
     {
         self::start();
         return isset($_SESSION['user_id']);
     }
 
-    // obtencion de la info de la sesion
+    // Obtencion de la info de la sesion
     public static function get(string $key): mixed
     {
         self::start();
         return $_SESSION[$key] ?? null;
     }
-// se establece info de la sesion
+
+    // Se establece info de la sesion
     public static function set(string $key, mixed $value): void
     {
         self::start();
         $_SESSION[$key] = $value;
     }
 
-    // cierre de la sesion
+    // Cierre de la sesion
     public static function destroy(): void
     {
         self::start();

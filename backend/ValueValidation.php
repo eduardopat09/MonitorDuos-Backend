@@ -32,7 +32,7 @@ class ValueValidation
         return trim((string)$val);
     }
 
-    public static function validateDate(mixed $val): string
+    public static function validateDate(mixed $val, bool $isEndOfDay = false): string
     {
         if (!is_string($val) || trim($val) === '') {
             throw new InvalidArgumentException("La fecha no puede estar vacía.");
@@ -41,7 +41,7 @@ class ValueValidation
         $val = trim($val);
         // Normalizar si solo envían la fecha (YYYY-MM-DD)
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
-            $val .= ' 00:00:00';
+            $val .= $isEndOfDay ? ' 23:59:59' : ' 00:00:00';
         }
 
         $format = 'Y-m-d H:i:s';

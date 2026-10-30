@@ -23,7 +23,8 @@ class Services
 
             Tools::jsonResponse([
                 'status' => 'success',
-                'mensaje' => "Sesion iniciada para $userClean"
+                'mensaje' => "Sesion iniciada para $userClean",
+                'usuario' => $userClean
             ], 200);
         } catch (InvalidArgumentException $e) {
             Tools::jsonResponse(['error' => $e->getMessage()], 400);
@@ -33,9 +34,10 @@ class Services
     public static function checkSession(): void
     {
         if (!Session::isValid()) {
-            http_response_code(401);
-            echo Errors::UNAUTHORIZED->value;
-            exit;
+            Tools::jsonResponse([
+                'status' => 'error',
+                'error' => 'Sesion no iniciada o invalida'
+            ], 401);
         }
 
         Tools::jsonResponse([
@@ -55,12 +57,22 @@ class Services
 
     public static function obtenerYGuardarDatos(): void
     {
-        $command = escapeshellcmd('python ' . __DIR__ . '/python/obtencion_datos_rendimiento.py') . ' 2>&1';
+        $scriptPath = __DIR__ . '/python/obtencion_datos_rendimiento.py';
+        $command = escapeshellcmd("python \"$scriptPath\"") . ' 2>&1';
         $output = shell_exec($command);
         $metrics = json_decode($output ?: '{}', true);
 
         if (!isset($metrics['status']) || $metrics['status'] !== 'success') {
-            Tools::jsonResponse(['error' => 'Error al ejecutar script de Python'], 500);
+            $command = escapeshellcmd("python3 \"$scriptPath\"") . ' 2>&1';
+            $output = shell_exec($command);
+            $metrics = json_decode($output ?: '{}', true);
+        }
+
+        if (!isset($metrics['status']) || $metrics['status'] !== 'success') {
+            Tools::jsonResponse([
+                'error' => 'Error al ejecutar script de Python',
+                'detalle' => $output
+            ], 500);
         }
 
         $pdo = Connection::getInstance();
@@ -85,10 +97,12 @@ class Services
             Tools::jsonResponse([
                 'status' => 'success',
                 'sesion_id' => $sesionId,
+                'equipo' => gethostname(),
+                'timestamp' => date('Y-m-d H:i:s'),
                 'datos' => [
-                    'cpu_uso' => $metrics['cpu_uso'],
-                    'ram_uso' => $metrics['ram_uso'],
-                    'disco_uso' => $metrics['disco_uso']
+                    'cpu_uso' => (float) $metrics['cpu_uso'],
+                    'ram_uso' => (float) $metrics['ram_uso'],
+                    'disco_uso' => (float) $metrics['disco_uso']
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -103,8 +117,8 @@ class Services
             ValueValidation::validateRequired($fechaInicio, 'inicio');
             ValueValidation::validateRequired($fechaFin, 'fin');
 
-            $inicioValido = ValueValidation::validateDate($fechaInicio);
-            $finValido = ValueValidation::validateDate($fechaFin);
+            $inicioValido = ValueValidation::validateDate($fechaInicio, false);
+            $finValido = ValueValidation::validateDate($fechaFin, true);
 
             if (strtotime($inicioValido) > strtotime($finValido)) {
                 Tools::jsonResponse(['error' => 'La fecha de inicio no puede ser mayor que la fecha final.'], 400);
@@ -132,6 +146,7 @@ class Services
 
             Tools::jsonResponse([
                 'status' => 'success',
+                'equipo' => gethostname(),
                 'total_registros' => count($datos),
                 'datos' => $datos
             ], 200);
