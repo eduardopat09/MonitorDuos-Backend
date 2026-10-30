@@ -55,7 +55,7 @@ class Services
 
     public static function obtenerYGuardarDatos(): void
     {
-        $command = escapeshellcmd('python3 ' . __DIR__ . '/python/obtencion_datos_rendimiento.py') . ' 2>&1';
+        $command = escapeshellcmd('python ' . __DIR__ . '/python/obtencion_datos_rendimiento.py') . ' 2>&1';
         $output = shell_exec($command);
         $metrics = json_decode($output ?: '{}', true);
 

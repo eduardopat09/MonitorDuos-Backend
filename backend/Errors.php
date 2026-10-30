@@ -21,6 +21,6 @@ enum Errors: string
     // Registro inexistente
     case NOT_FOUND = '{"Error":{"Type":404, "Category":4, "Description":"The requested record does not exist."}}';
     
-    // Error de Base de Datos
+    // Error de BD
     case DATABASE_ERROR = '{"Error":{"Type":500, "Category":5, "Description":"A database error occurred."}}';
 }

@@ -1,4 +1,4 @@
-# Usar PHP 8.2 con Apache como base
+# Usar PHP 8.
 FROM php:8.2-apache
 
 # Actualizar e instalar dependencias del sistema y Python

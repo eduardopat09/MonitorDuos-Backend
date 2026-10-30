@@ -6,7 +6,7 @@ namespace App\Sessions;
 
 class Session
 {
-    // cracion de la sesion y la cookie
+    // sesion y la cookie
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {

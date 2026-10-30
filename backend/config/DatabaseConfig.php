@@ -23,6 +23,6 @@ class DatabaseConfig
 
     public static function getPassword(): string
     {
-        return getenv('DB_PASS') ?: 'rootpassword';
+        return getenv('DB_PASS') ?: 'sasageyo';
     }
 }
