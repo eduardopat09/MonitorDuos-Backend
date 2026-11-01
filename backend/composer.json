@@ -1,6 +1,13 @@
 {
+    "name": "monitorduo/backend",
+    "description": "Backend API para Monitoreo de Recursos del Sistema MoniDuo",
+    "type": "project",
     "autoload": {
         "psr-4": {
+            "App\\Config\\": "config/",
+            "App\\Database\\": "database/",
+            "App\\Sessions\\": "sessions/",
+            "App\\Utils\\": "utils/",
             "App\\": "./"
         }
     }
