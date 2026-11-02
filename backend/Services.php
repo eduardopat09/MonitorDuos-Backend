@@ -78,27 +78,57 @@ $action = (string) ($params['action'] ?? '');
 
 /**
  * Manejador: Inicio de sesión.
+ *
+ * Acepta únicamente POST con cuerpo JSON { "usuario": "...", "contrasena": "..." }.
+ * Valida ambos campos, consulta la BD con sentencia preparada y verifica la contraseña
+ * con password_verify(). Si todo es correcto regenera el id de sesión y la inicia.
+ * Responde 405 si el método no es POST, 400 si faltan campos, 401 si las credenciales
+ * son incorrectas, 200 con { status, usuario } si el acceso es válido.
  */
-function handleLogin(array $params): void
+function handleLogin(array $body): void
 {
-    try {
-        $usuarioRaw = $params['usuario'] ?? $params['username'] ?? '';
-        $userClean = ValueValidation::validateRequired($usuarioRaw, 'usuario');
+    // Solo se acepta POST (la contraseña nunca debe viajar en la URL)
+    $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    if ($method !== 'POST') {
+        http_response_code(405);
+        header('Allow: POST');
+        Tools::jsonResponse(['status' => 'error', 'mensaje' => 'Metodo no permitido. Use POST.'], 405);
+    }
 
+    try {
+        // Validar presencia de ambos campos
+        $usuarioRaw   = $body['usuario']   ?? '';
+        $contrasenaRaw = $body['contrasena'] ?? '';
+
+        $usuarioClean   = ValueValidation::validateRequired($usuarioRaw, 'usuario');
+        $contrasenaClean = ValueValidation::validateRequired($contrasenaRaw, 'contrasena');
+
+        // Consultar BD con sentencia preparada (inmune a inyección SQL)
+        $pdo  = Connection::getInstance();
+        $stmt = $pdo->prepare('SELECT id, user, password FROM usuarios WHERE user = :usuario LIMIT 1');
+        $stmt->execute(['usuario' => $usuarioClean]);
+        $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Verificar contraseña con hash seguro (mensaje genérico para no revelar cuál falló)
+        if ($row === false || !password_verify($contrasenaClean, (string) $row['password'])) {
+            Errors::unauthorized('Usuario o contrasena incorrectos.');
+        }
+
+        // Credenciales correctas: regenerar id de sesión para prevenir fijación de sesión
         Session::start();
-        Session::set('user_id', 1);
-        Session::set('usuario', $userClean);
-        $token = Session::generateToken(16);
-        Session::set('token', $token);
+        session_regenerate_id(true);
+
+        Session::set('user_id', (int) $row['id']);
+        Session::set('usuario', (string) $row['user']);
 
         Tools::jsonResponse([
-            'status' => 'success',
-            'mensaje' => "Sesion iniciada para $userClean",
-            'usuario' => $userClean,
-            'token' => $token,
+            'status'  => 'success',
+            'usuario' => (string) $row['user'],
         ], 200);
     } catch (InvalidArgumentException $e) {
         Errors::badRequest($e->getMessage());
+    } catch (Throwable $e) {
+        Errors::databaseError('Error al verificar credenciales.', $e->getMessage());
     }
 }
 
@@ -240,7 +270,8 @@ switch ($action) {
         break;
 
     case 'login':
-        handleLogin($params);
+        // El login sólo lee del cuerpo JSON (la contraseña nunca viene en la URL)
+        handleLogin($body);
         break;
 
     case 'profile':

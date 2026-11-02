@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Utils;
 
+use App\Config\DatabaseConfig;
+
 /**
  * Funciones utilitarias globales, puente con Python y manejo de CORS y respuestas HTTP.
  */
@@ -11,20 +13,19 @@ class Tools
 {
     /**
      * Aplica los encabezados CORS necesarios para peticiones cross-origin con credenciales.
+     *
+     * Usa el origen exacto configurado en FRONTEND_ORIGIN (nunca el comodín '*'),
+     * lo que permite que el navegador envíe y reciba cookies de sesión.
+     * Si el método es OPTIONS (preflight), responde 204 y termina la ejecución.
      */
     public static function applyCorsHeaders(): void
     {
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $allowedOrigin = DatabaseConfig::getFrontendOrigin();
 
-        if (!empty($origin)) {
-            header("Access-Control-Allow-Origin: $origin");
-            header('Access-Control-Allow-Credentials: true');
-        } else {
-            header('Access-Control-Allow-Origin: *');
-        }
-
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+        header("Access-Control-Allow-Origin: $allowedOrigin");
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
         header('Access-Control-Max-Age: 86400');
 
         // Responder de inmediato a las peticiones preflight (OPTIONS)
@@ -36,10 +37,11 @@ class Tools
 
     /**
      * Emite una respuesta JSON estandarizada y finaliza la ejecución.
+     * Las cabeceras CORS ya se aplican al inicio de index.php; aquí
+     * no se repiten para evitar que PHP emita cabeceras duplicadas.
      */
     public static function jsonResponse(array $data, int $statusCode = 200): void
     {
-        self::applyCorsHeaders();
         http_response_code($statusCode);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

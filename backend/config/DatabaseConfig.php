@@ -57,4 +57,14 @@ class DatabaseConfig
     {
         return 'utf8mb4';
     }
+
+    /**
+     * Origen permitido del frontend para las cabeceras CORS.
+     * Configurable mediante la variable de entorno FRONTEND_ORIGIN.
+     * En desarrollo usa http://localhost:5173 (Vite por defecto).
+     */
+    public static function getFrontendOrigin(): string
+    {
+        return (string) (getenv('FRONTEND_ORIGIN') ?: 'http://localhost:5173');
+    }
 }
